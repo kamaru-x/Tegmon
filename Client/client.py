@@ -9,10 +9,11 @@ import json
 import pygetwindow as gw
 
 # URL endpoints
-REGISTER_URL = "http://127.0.0.1:8000/api/device/register/"
-ACTIVITY_URL = "http://127.0.0.1:8000/api/activity/"
+API = "https://tegmon.pythonanywhere.com"
 
-# Function to get system information
+REGISTER_URL = f"{API}/api/device/register/"
+ACTIVITY_URL = f"{API}/api/activity/"
+
 def get_system_info():
     system_name = platform.node()
     username = getuser()
@@ -27,7 +28,6 @@ def get_system_info():
         "os_version": os_version
     }
 
-# Function to register the device
 def register_device():
     headers = {"Content-Type": "application/json"}
     system_info = get_system_info()
@@ -45,7 +45,6 @@ def register_device():
     except Exception as e:
         print("Error connecting to the server:", e)
 
-# Function to send activity data to Django API
 def send_activity_data(activity_data):
     headers = {"Content-Type": "application/json"}
 
@@ -58,11 +57,9 @@ def send_activity_data(activity_data):
     except Exception as e:
         print(f"Error sending data: {e}")
 
-# Monitor application activities (open, close, minimize, restore)
 def monitor_activity():
     system_info = get_system_info()
 
-    # Monitor application activities (opened, minimized, restored, closed)
     app_names = ["code.exe", "notepad.exe", "chrome.exe"]
     app_state = {}
 
@@ -70,11 +67,9 @@ def monitor_activity():
         app_state[app] = {'process_found': False, 'minimized': False}
 
     while True:
-        # Check if the apps are running and their window states
         for app in app_names:
             process_found = False
 
-            # Check if the application is running
             for process in psutil.process_iter(['pid', 'name']):
                 if process.info['name'].lower() == app.lower():
                     process_found = True
@@ -84,14 +79,12 @@ def monitor_activity():
                         app_state[app]['process_found'] = True
                     break
 
-            # If the application is not running and was previously found, it's closed
             if not process_found and app_state[app]['process_found']:
                 log_message = f"{app} closed!"
                 send_activity_data(create_activity_payload(system_info, log_message, "red"))
                 app_state[app]['process_found'] = False
                 app_state[app]['minimized'] = False
 
-            # Monitor window state (minimized or restored)
             if process_found:
                 windows = gw.getWindowsWithTitle(app.replace(".exe", "").capitalize())
                 if windows:
@@ -105,9 +98,8 @@ def monitor_activity():
                             send_activity_data(create_activity_payload(system_info, log_message, "blue"))
                         app_state[app]['minimized'] = window.isMinimized
 
-        time.sleep(1)  # Monitor every 10 seconds
+        time.sleep(1)
 
-# Function to create activity data payload
 def create_activity_payload(system_info, activity_log, color):
     return {
         "device": {
@@ -117,7 +109,7 @@ def create_activity_payload(system_info, activity_log, color):
             "os_version": system_info["os_version"]
         },
         "activity_log": activity_log,
-        "color": color,  # Add the color field to the payload
+        "color": color,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
